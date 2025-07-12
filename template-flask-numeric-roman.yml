@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Roman Numerals Converter Application deployed on EC2 using Flask and CloudFormation
+
+Parameters:
+  KeyPairName:
+    Description: Name of an existing EC2 KeyPair to SSH
+    Type: AWS::EC2::KeyPair::KeyName
+
+Resources:
+  RomanAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP and SSH access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  RomanAppEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref KeyPairName
+      ImageId: ami-0c02fb55956c7d316  # Amazon Linux 2 AMI (update if needed)
+      SecurityGroups:
+        - !Ref RomanAppSecurityGroup
+      Tags:
+        - Key: Name
+          Value: Web Server of !Ref AWS::StackName
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y python3 git
+          pip3 install flask
+          cd /home/ec2-user
+          git clone https://github.com/hasanyurt35/roman-numerals-converter.git
+          cd roman-numerals-converter
+          python3 app.py --host=0.0.0.0 --port=80 &
+
+Outputs:
+  WebsiteURL:
+    Description: Application URL
+    Value: !Sub "http://${RomanAppEC2Instance.PublicDnsName}"
